@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Пазл">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="description" content="Локальный пазл: загружай свои картинки и собирай">
+<title>Пазл</title>
+<link rel="manifest" id="manifestLink">
+<style>
+:root {
+  --bg: #0f0f1a;
+  --card: #1a1a2e;
+  --accent: #4cc9f0;
+  --accent2: #7b2cbf;
+  --text: #e8e8f0;
+  --muted: #8a8aa0;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%; width: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+body { display: flex; flex-direction: column; }
+
+.screen { display: none; flex-direction: column; height: 100%; width: 100%;
+  padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+.screen.active { display: flex; }
+
+#home {
+  justify-content: center; align-items: center; gap: 20px; padding: 20px;
+  background: linear-gradient(160deg, #0f0f1a 0%, #16213e 50%, #1a1a2e 100%);
+}
+#home h1 {
+  font-size: 2.4rem; font-weight: 700;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#home .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 8px; }
+
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: min(280px, 85vw); padding: 16px 24px; border: none; border-radius: 16px;
+  font-size: 1.1rem; font-weight: 600; color: #fff;
+  background: linear-gradient(135deg, var(--accent2), #5a189a);
+  box-shadow: 0 8px 24px rgba(123,44,191,0.35); cursor: pointer;
+}
+.btn:active { transform: scale(0.96); opacity: 0.9; }
+.btn.secondary { background: linear-gradient(135deg, #2a2a40, #3a3a55); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.btn.small { padding: 10px 16px; font-size: 0.95rem; width: auto; border-radius: 12px; }
+.btn.danger { background: linear-gradient(135deg, #c1121f, #780000); }
+.btn:disabled { opacity: 0.45; pointer-events: none; }
+
+#selectImage, #selectSize, #multiLobby {
+  padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-shrink: 0; }
+.header h2 { font-size: 1.25rem; flex: 1; }
+.back-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: none;
+  background: var(--card); color: var(--text); font-size: 1.2rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.grid-images {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+}
+.img-card {
+  background: var(--card); border-radius: 14px; overflow: hidden;
+  position: relative; aspect-ratio: 1; border: 2px solid transparent;
+}
+.img-card.selected { border-color: var(--accent); }
+.img-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-card .del {
+  position: absolute; top: 6px; right: 6px; width: 28px; height: 28px;
+  border-radius: 50%; background: rgba(0,0,0,0.65); color: #fff;
+  border: none; font-size: 14px; display: flex; align-items: center; justify-content: center;
+}
+
+.size-options {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 8px;
+}
+.size-btn {
+  padding: 14px 10px; border-radius: 14px; border: 2px solid #2a2a40;
+  background: var(--card); color: var(--text); font-size: 0.95rem; font-weight: 600;
+  text-align: center; line-height: 1.35;
+}
+.size-btn small { display: block; color: var(--muted); font-weight: 400; font-size: 0.8rem; margin-top: 2px; }
+.size-btn .status {
+  display: block; margin-top: 4px; font-size: 0.72rem; font-weight: 500;
+  padding: 2px 6px; border-radius: 8px; width: fit-content; margin-left: auto; margin-right: auto;
+}
+.size-btn .status.done { background: #1a4d2e; color: #6ee7a0; }
+.size-btn .status.progress { background: #1e3a5f; color: var(--accent); }
+.size-btn .status.none { background: #2a2a40; color: var(--muted); }
+.size-btn.selected { border-color: var(--accent); background: #1e3a5f; }
+.size-btn.recommend { border-color: #3d5a80; }
+.img-card .badge {
+  position: absolute; bottom: 6px; left: 6px; right: 6px;
+  font-size: 0.68rem; font-weight: 600; text-align: center;
+  padding: 3px 6px; border-radius: 8px; background: rgba(0,0,0,0.7);
+  color: #fff; pointer-events: none;
+}
+.img-card .badge.done { background: rgba(26,77,46,0.9); color: #6ee7a0; }
+.img-card .badge.progress { background: rgba(30,58,95,0.9); color: var(--accent); }
+
+#game { padding: 0; position: relative; overflow: hidden; }
+#gameHeader {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; padding-top: max(8px, var(--safe-top));
+  background: rgba(15,15,26,0.95); backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); z-index: 20; flex-shrink: 0;
+}
+#gameHeader .title { flex: 1; font-size: 0.95rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#progressBadge {
+  font-size: 0.8rem; background: #2a2a40; padding: 4px 10px;
+  border-radius: 20px; color: var(--accent); white-space: nowrap;
+}
+
+#viewportWrap {
+  flex: 1; position: relative; overflow: hidden; background: #0a0a12; min-height: 0;
+}
+#viewport {
+  width: 100%; height: 100%; position: relative; touch-action: none; overflow: hidden;
+}
+#boardContainer {
+  position: absolute; left: 0; top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+#boardCanvas {
+  display: block; background: #fff;
+  box-shadow: 0 0 40px rgba(0,0,0,0.5);
+}
+#refCanvas {
+  display: none; position: absolute; left: 0; top: 0; pointer-events: none;
+}
+
+#trayArea {
+  flex-shrink: 0; background: rgba(15,15,26,0.97);
+  border-top: 1px solid #2a2a40;
+  padding-bottom: max(4px, var(--safe-bottom)); z-index: 15;
+}
+#filters {
+  display: flex; gap: 6px; padding: 8px 10px 4px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+#filters::-webkit-scrollbar { display: none; }
+.filter-btn {
+  flex-shrink: 0; padding: 6px 12px; border-radius: 20px;
+  border: 1px solid #3a3a55; background: transparent; color: var(--muted);
+  font-size: 0.8rem; white-space: nowrap;
+}
+.filter-btn.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+
+#tray {
+  display: flex; gap: 8px; padding: 6px 10px 10px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  min-height: 76px; scrollbar-width: none;
+}
+#tray::-webkit-scrollbar { display: none; }
+.piece {
+  flex-shrink: 0; width: 62px; height: 62px; border-radius: 8px;
+  overflow: hidden; background: #222; border: 2px solid #3a3a55;
+  position: relative; touch-action: none;
+}
+.piece canvas { width: 100%; height: 100%; display: block; pointer-events: none; }
+.piece.dragging { opacity: 0.3; }
+
+#bottomTabs {
+  display: flex; background: #12121f; border-top: 1px solid #2a2a40;
+}
+.tab-btn {
+  flex: 1; padding: 9px; border: none; background: transparent;
+  color: var(--muted); font-size: 0.82rem; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.tab-btn.active { color: var(--accent); }
+.tab-btn span { font-size: 1.05rem; }
+
+#ghost {
+  position: fixed; pointer-events: none; z-index: 1000; display: none;
+  border-radius: 6px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  border: 2px solid var(--accent); overflow: hidden;
+}
+#ghost canvas { display: block; }
+
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+  padding: 20px; padding-top: max(20px, var(--safe-top));
+  padding-bottom: max(20px, var(--safe-bottom));
+}
+.overlay.show { display: flex; }
+.modal {
+  background: var(--card); border-radius: 20px; padding: 24px;
+  width: min(360px, 100%); max-height: 90vh; overflow-y: auto;
+}
+.modal h3 { margin-bottom: 12px; font-size: 1.2rem; }
+.modal p { color: var(--muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.4; }
+.modal textarea, .modal input {
+  width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #3a3a55;
+  background: #0f0f1a; color: var(--text); font-size: 0.95rem; margin-bottom: 12px;
+}
+.modal .row { display: flex; gap: 10px; margin-top: 8px; }
+.modal .row .btn { flex: 1; }
+.room-code {
+  font-family: ui-monospace, monospace; font-size: 1.1rem; letter-spacing: 1px;
+  background: #0f0f1a; padding: 12px; border-radius: 12px; text-align: center;
+  margin: 12px 0; word-break: break-all; max-height: 80px; overflow: auto;
+}
+.hidden { display: none !important; }
+.empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.95rem; }
+</style>
+</head>
+<body>
+
+<div id="home" class="screen active">
+  <h1>Пазл</h1>
+  <p class="sub">Загружай картинки · Собирай один или вместе</p>
+  <button class="btn" id="btnPlay">Играть</button>
+  <button class="btn secondary" id="btnUpload">Загрузить картинку</button>
+  <button class="btn secondary" id="btnMulti">Комната (локальная сеть)</button>
+  <input type="file" id="fileInput" accept="image/*" class="hidden" multiple>
+</div>
+
+<div id="selectImage" class="screen">
+  <div class="header">
+    <button class="back-btn" data-back="home">←</button>
+    <h2>Выбери картинку</h2>
+  </div>
+  <div id="imagesGrid" class="grid-images"></div>
+  <div id="noImages" class="empty hidden">Нет загруженных картинок.<br>Нажми «Загрузить» на главном экране.</div>
+</div>
+
+<div id="selectSize" class="screen">
+  <div class="header">
+    <button class="back-btn" data-back="selectImage">←</button>
+    <h2>Сложность</h2>
+    <button class="btn small danger" id="btnDeleteImage" style="padding:8px 12px;font-size:0.85rem;">Удалить</button>
+  </div>
+  <p style="color:var(--muted);margin-bottom:6px;font-size:0.9rem;">Количество частей (под размер фото)</p>
+  <div class="size-options" id="sizeOptions"></div>
+  <div style="margin-top:20px;text-align:center;">
+    <button class="btn" id="btnStartGame" disabled>Начать</button>
+  </div>
+</div>
+
+<div id="multiLobby" class="screen">
+  <div class="header">
+    <button class="back-btn" data-back="home">←</button>
+    <h2>Комната</h2>
+  </div>
+  <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px;">
+    Два устройства в одной Wi-Fi. Один создаёт комнату, второй подключается. Код можно отправить через AirDrop / Telegram.
+  </p>
+  <button class="btn" id="btnCreateRoom" style="width:100%;margin-bottom:10px;">Создать комнату</button>
+  <button class="btn secondary" id="btnJoinRoom" style="width:100%;">Подключиться</button>
+  <div id="roomInfo" class="hidden" style="margin-top:18px;">
+    <p id="roomStatus">Ожидание…</p>
+    <div class="room-code" id="roomCodeDisplay"></div>
+    <button class="btn small secondary" id="btnCopyCode">Копировать код</button>
+    <textarea id="joinCodeInput" class="hidden" placeholder="Вставь код от хоста" rows="3" style="margin-top:12px;"></textarea>
+    <button class="btn small hidden" id="btnSubmitJoin" style="margin-top:8px;width:100%;">Подключиться</button>
+  </div>
+</div>
+
+<div id="game" class="screen">
+  <div id="gameHeader">
+    <button class="back-btn" id="btnExitGame" style="width:36px;height:36px;">←</button>
+    <div class="title" id="gameTitle">Пазл</div>
+    <button class="back-btn" id="btnResetGame" title="Сбросить игру" style="width:36px;height:36px;font-size:1.05rem;">↺</button>
+    <div id="progressBadge">0 / 0</div>
+  </div>
+  <div id="viewportWrap">
+    <div id="viewport">
+      <div id="boardContainer">
+        <canvas id="boardCanvas"></canvas>
+        <canvas id="refCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+  <div id="trayArea">
+    <div id="filters">
+      <button class="filter-btn active" data-filter="all">Все</button>
+      <button class="filter-btn" data-filter="corners">Углы</button>
+      <button class="filter-btn" data-filter="edges">Края</button>
+      <button class="filter-btn" data-filter="middle">Середина</button>
+    </div>
+    <div id="tray"></div>
+  </div>
+  <div id="bottomTabs">
+    <button class="tab-btn active" data-view="puzzle"><span>🧩</span>Пазл</button>
+    <button class="tab-btn" data-view="ref"><span>🖼</span>Картинка</button>
+  </div>
+</div>
+
+<div id="ghost"><canvas></canvas></div>
+
+<div id="winOverlay" class="overlay">
+  <div class="modal">
+    <h3>Готово! 🎉</h3>
+    <p>Пазл собран.</p>
+    <div class="row">
+      <button class="btn secondary" id="btnWinHome">На главную</button>
+      <button class="btn" id="btnWinAgain">Ещё раз</button>
+    </div>
+  </div>
+</div>
+
+<div id="exitOverlay" class="overlay">
+  <div class="modal">
+    <h3>Выйти?</h3>
+    <p>Прогресс сохранится автоматически.</p>
+    <div class="row">
+      <button class="btn secondary" id="btnCancelExit">Остаться</button>
+      <button class="btn danger" id="btnConfirmExit">Выйти</button>
+    </div>
+  </div>
+</div>
+
+<div id="resetOverlay" class="overlay">
+  <div class="modal">
+    <h3>Сбросить игру?</h3>
+    <p>Весь прогресс по этому пазлу будет удалён. Кусочки перемешаются заново.</p>
+    <div class="row">
+      <button class="btn secondary" id="btnCancelReset">Отмена</button>
+      <button class="btn danger" id="btnConfirmReset">Сбросить</button>
+    </div>
+  </div>
+</div>
+
+<div id="deleteImageOverlay" class="overlay">
+  <div class="modal">
+    <h3>Удалить картинку?</h3>
+    <p>Картинка и весь прогресс по всем сложностям будут полностью удалены из памяти устройства. Это нельзя отменить.</p>
+    <div class="row">
+      <button class="btn secondary" id="btnCancelDeleteImage">Отмена</button>
+      <button class="btn danger" id="btnConfirmDeleteImage">Удалить навсегда</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const DB_NAME = 'PuzzleAppDB';
+  const DB_VER = 1;
+  const MAX_IMAGE_SIDE = 1400;
+  const SNAP_RATIO = 0.42;
+  const TRAY_SIZE = 58;
+  const TARGET_COUNTS = [36, 64, 100, 150, 200, 300, 500, 800, 1000];
+
+  const $ = id => document.getElementById(id);
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $(id).classList.add('active');
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  // ---------- IndexedDB ----------
+  let db;
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('images')) d.createObjectStore('images', { keyPath: 'id' });
+        if (!d.objectStoreNames.contains('progress')) d.createObjectStore('progress', { keyPath: 'key' });
+      };
+      req.onsuccess = e => { db = e.target.result; resolve(db); };
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+  function idbPut(store, val) {
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).put(val);
+      tx.oncomplete = () => res();
+      tx.onerror = e => rej(e.target.error);
+    });
+  }
+  function idbGet(store, key) {
+    return new Promise((res, rej) => {
+      const r = db.transaction(store, 'readonly').objectStore(store).get(key);
+      r.onsuccess = () => res(r.result);
+      r.onerror = e => rej(e.target.error);
+    });
+  }
+  function idbGetAll(store) {
+    return new Promise((res, rej) => {
+      const r = db.transaction(store, 'readonly').objectStore(store).getAll();
+      r.onsuccess = () => res(r.result || []);
+      r.onerror = e => rej(e.target.error);
+    });
+  }
+  function idbDelete(store, key) {
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).delete(key);
+      tx.oncomplete = () => res();
+      tx.onerror = e => rej(e.target.error);
+    });
+  }
+
+  // ---------- Image helpers ----------
+  function loadImageFromBlob(blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+  function resizeToCanvas(img, maxSide) {
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    let tw = w, th = h;
+    if (Math.max(w, h) > maxSide) {
+      const s = maxSide / Math.max(w, h);
+      tw = Math.round(w * s);
+      th = Math.round(h * s);
+    }
+    const c = document.createElement('canvas');
+    c.width = tw; c.height = th;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, tw, th);
+    return c;
+  }
+  function canvasToBlob(canvas, q = 0.82) {
+    return new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
+  }
+
+  // ---------- Grid calculation (aspect-aware) ----------
+  function bestGrid(imgW, imgH, targetPieces) {
+    const aspect = imgW / imgH;
+    let best = null;
+    let bestScore = Infinity;
+    // search reasonable cols
+    const maxC = Math.min(60, Math.ceil(Math.sqrt(targetPieces * aspect) * 1.6));
+    for (let cols = 2; cols <= maxC; cols++) {
+      const rows = Math.max(2, Math.round(cols / aspect));
+      const pieces = cols * rows;
+      const pieceAspect = (imgW / cols) / (imgH / rows);
+      // prefer close to target count and near-square pieces
+      const countDiff = Math.abs(pieces - targetPieces) / targetPieces;
+      const aspectDiff = Math.abs(Math.log(pieceAspect)); // 0 = square
+      const score = countDiff * 2 + aspectDiff * 0.5;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { cols, rows, pieces };
+      }
+    }
+    return best;
+  }
+
+  function buildSizeOptions(imgW, imgH) {
+    const opts = [];
+    const seen = new Set();
+    for (const target of TARGET_COUNTS) {
+      const g = bestGrid(imgW, imgH, target);
+      if (!g) continue;
+      const key = g.cols + 'x' + g.rows;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      opts.push(g);
+    }
+    // sort by piece count
+    opts.sort((a, b) => a.pieces - b.pieces);
+    return opts;
+  }
+
+  // ---------- State ----------
+  let images = [];
+  let selectedImageId = null;
+  let selectedCols = 0, selectedRows = 0;
+  let game = null;
+  let pendingDeleteId = null;
+
+  async function deleteImageCompletely(imageId) {
+    if (!imageId) return;
+    await idbDelete('images', imageId);
+    const all = await idbGetAll('progress');
+    for (const p of all) {
+      if (p.key && p.key.startsWith(imageId + '_')) await idbDelete('progress', p.key);
+    }
+    // if currently selected, clear
+    if (selectedImageId === imageId) {
+      selectedImageId = null;
+      selectedCols = selectedRows = 0;
+    }
+    if (game && game.imageId === imageId) game = null;
+  }
+
+  // ---------- PWA ----------
+  function setupManifest() {
+    const icon = makeIcon(180);
+    const manifest = {
+      name: 'Пазл', short_name: 'Пазл', start_url: './',
+      display: 'standalone', background_color: '#0f0f1a', theme_color: '#1a1a2e',
+      orientation: 'any',
+      icons: [
+        { src: icon, sizes: '180x180', type: 'image/png', purpose: 'any maskable' },
+        { src: icon, sizes: '192x192', type: 'image/png' },
+        { src: icon, sizes: '512x512', type: 'image/png' }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    $('manifestLink').href = URL.createObjectURL(blob);
+    let link = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!link) { link = document.createElement('link'); link.rel = 'apple-touch-icon'; document.head.appendChild(link); }
+    link.href = icon;
+  }
+  function makeIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, size, size);
+    g.addColorStop(0, '#7b2cbf'); g.addColorStop(1, '#4cc9f0');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+    ctx.font = `${size * 0.48}px Apple Color Emoji, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🧩', size / 2, size / 2 + 2);
+    return c.toDataURL('image/png');
+  }
+  function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    const code = `const C='puzzle-v2';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])));});self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('./'))));});`;
+    const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+    navigator.serviceWorker.register(url).catch(() => {});
+  }
+
+  // ---------- Images UI ----------
+  async function getProgressMap() {
+    const all = await idbGetAll('progress');
+    const map = {};
+    all.forEach(p => { if (p && p.key) map[p.key] = p; });
+    return map;
+  }
+
+  function progressStatus(prog, totalPieces) {
+    if (!prog || !prog.placements || !prog.placements.length) return { kind: 'none', text: 'Не начат' };
+    const done = prog.placements.length;
+    if (done >= totalPieces) return { kind: 'done', text: 'Собран ✓' };
+    return { kind: 'progress', text: `${done} / ${totalPieces}` };
+  }
+
+  async function refreshImages() {
+    images = await idbGetAll('images');
+    const progMap = await getProgressMap();
+    const grid = $('imagesGrid');
+    grid.innerHTML = '';
+    if (!images.length) {
+      $('noImages').classList.remove('hidden');
+      return;
+    }
+    $('noImages').classList.add('hidden');
+
+    images.forEach(img => {
+      const card = document.createElement('div');
+      card.className = 'img-card';
+      card.dataset.id = img.id;
+      const thumb = document.createElement('img');
+      thumb.src = img.thumb;
+      card.appendChild(thumb);
+
+      // aggregate status across all difficulties for this image
+      let hasDone = false, hasProgress = false, bestText = '';
+      Object.keys(progMap).forEach(key => {
+        if (!key.startsWith(img.id + '_')) return;
+        const m = key.match(/_(\d+)x(\d+)$/);
+        if (!m) return;
+        const total = (+m[1]) * (+m[2]);
+        const st = progressStatus(progMap[key], total);
+        if (st.kind === 'done') hasDone = true;
+        else if (st.kind === 'progress') {
+          hasProgress = true;
+          if (!bestText) bestText = st.text;
+        }
+      });
+      if (hasDone || hasProgress) {
+        const badge = document.createElement('div');
+        badge.className = 'badge ' + (hasDone && !hasProgress ? 'done' : 'progress');
+        badge.textContent = hasDone && !hasProgress ? 'Собран ✓' : (hasDone ? 'Есть собранные' : 'В процессе ' + bestText);
+        card.appendChild(badge);
+      }
+
+      const del = document.createElement('button');
+      del.className = 'del'; del.textContent = '×';
+      del.title = 'Удалить из памяти';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        pendingDeleteId = img.id;
+        $('deleteImageOverlay').classList.add('show');
+      });
+      card.appendChild(del);
+      card.addEventListener('click', () => {
+        selectedImageId = img.id;
+        document.querySelectorAll('.img-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        showSizeScreen(img);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  async function showSizeScreen(imgEntry) {
+    const opts = buildSizeOptions(imgEntry.w, imgEntry.h);
+    const progMap = await getProgressMap();
+    const box = $('sizeOptions');
+    box.innerHTML = '';
+    selectedCols = selectedRows = 0;
+    $('btnStartGame').disabled = true;
+
+    opts.forEach((g, i) => {
+      const key = `${imgEntry.id}_${g.cols}x${g.rows}`;
+      const st = progressStatus(progMap[key], g.pieces);
+      const btn = document.createElement('button');
+      btn.className = 'size-btn' + (i === 2 || i === 3 ? ' recommend' : '');
+      btn.innerHTML = `${g.cols}×${g.rows}<small>${g.pieces} частей</small>` +
+        `<span class="status ${st.kind}">${st.text}</span>`;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedCols = g.cols;
+        selectedRows = g.rows;
+        $('btnStartGame').disabled = false;
+      });
+      box.appendChild(btn);
+    });
+    showScreen('selectSize');
+  }
+
+  $('btnPlay').addEventListener('click', () => { refreshImages(); showScreen('selectImage'); });
+  $('btnUpload').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', async e => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const img = await loadImageFromBlob(file);
+        const canvas = resizeToCanvas(img, MAX_IMAGE_SIDE);
+        const blob = await canvasToBlob(canvas);
+        const tC = document.createElement('canvas');
+        const ts = 180;
+        const sc = Math.min(ts / canvas.width, ts / canvas.height);
+        tC.width = Math.round(canvas.width * sc);
+        tC.height = Math.round(canvas.height * sc);
+        tC.getContext('2d').drawImage(canvas, 0, 0, tC.width, tC.height);
+        const entry = {
+          id: uid(), name: file.name || 'Картинка', blob,
+          thumb: tC.toDataURL('image/jpeg', 0.7),
+          w: canvas.width, h: canvas.height, created: Date.now()
+        };
+        await idbPut('images', entry);
+      } catch (err) { console.warn(err); }
+    }
+    refreshImages();
+    showScreen('selectImage');
+  });
+
+  document.querySelectorAll('[data-back]').forEach(btn => {
+    btn.addEventListener('click', () => showScreen(btn.dataset.back));
+  });
+
+  $('btnStartGame').addEventListener('click', () => {
+    if (!selectedImageId || !selectedCols) return;
+    startGame(selectedImageId, selectedCols, selectedRows, !!window.__multiPending);
+  });
+
+  // ---------- Game ----------
+  async function startGame(imageId, cols, rows, isMulti) {
+    const imgEntry = images.find(i => i.id === imageId) || await idbGet('images', imageId);
+    if (!imgEntry) return;
+
+    const sourceImg = await loadImageFromBlob(imgEntry.blob);
+    const srcW = sourceImg.naturalWidth || sourceImg.width;
+    const srcH = sourceImg.naturalHeight || sourceImg.height;
+    const pieceW = Math.floor(srcW / cols);
+    const pieceH = Math.floor(srcH / rows);
+
+    // slightly crop to exact grid
+    const exactW = pieceW * cols;
+    const exactH = pieceH * rows;
+
+    const progressKey = `${imageId}_${cols}x${rows}`;
+    let saved = await idbGet('progress', progressKey);
+
+    const pieces = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        pieces.push({
+          id: r * cols + c,
+          col: c, row: r,
+          type: pieceType(c, r, cols, rows),
+          sx: c * pieceW, sy: r * pieceH,
+          sw: pieceW, sh: pieceH,
+          placed: false, placedCol: -1, placedRow: -1
+        });
+      }
+    }
+    if (saved && saved.placements) {
+      saved.placements.forEach(p => {
+        const piece = pieces.find(x => x.id === p.id);
+        if (piece) {
+          piece.placed = true;
+          piece.placedCol = p.col;
+          piece.placedRow = p.row;
+        }
+      });
+    }
+
+    game = {
+      imageId, cols, rows, srcW: exactW, srcH: exactH,
+      pieceW, pieceH, sourceImg, pieces, progressKey,
+      view: 'puzzle', scale: 1, panX: 0, panY: 0,
+      filter: 'all', isMulti: !!isMulti,
+      peers: null
+    };
+
+    const board = $('boardCanvas');
+    board.width = exactW;
+    board.height = exactH;
+    const ref = $('refCanvas');
+    ref.width = exactW;
+    ref.height = exactH;
+    ref.getContext('2d').drawImage(sourceImg, 0, 0, exactW, exactH, 0, 0, exactW, exactH);
+
+    $('gameTitle').textContent = imgEntry.name || 'Пазл';
+    updateProgress();
+    renderBoard();
+    renderTray();
+    showScreen('game');
+    setView('puzzle');
+
+    // fit after layout
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => fitBoard());
+    });
+
+    if (isMulti && dataChannel && dataChannel.readyState === 'open') {
+      game.peers = { send: m => dataChannel.send(JSON.stringify(m)) };
+      const placements = game.pieces.filter(p => p.placed).map(p => ({ id: p.id, col: p.placedCol, row: p.placedRow }));
+      dataChannel.send(JSON.stringify({
+        type: 'start', imageId, cols, rows, placements
+      }));
+      window.__multiPending = false;
+    }
+  }
+
+  function pieceType(c, r, cols, rows) {
+    const corner = (c === 0 || c === cols - 1) && (r === 0 || r === rows - 1);
+    const edge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
+    if (corner) return 'corners';
+    if (edge) return 'edges';
+    return 'middle';
+  }
+
+  function updateProgress() {
+    if (!game) return;
+    const total = game.pieces.length;
+    const done = game.pieces.filter(p => p.placed).length;
+    $('progressBadge').textContent = `${done} / ${total}`;
+    if (done === total && total > 0) {
+      setTimeout(() => $('winOverlay').classList.add('show'), 250);
+    }
+  }
+
+  function renderBoard() {
+    if (!game) return;
+    const ctx = $('boardCanvas').getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, game.srcW, game.srcH);
+    game.pieces.forEach(p => {
+      if (!p.placed) return;
+      ctx.drawImage(game.sourceImg, p.sx, p.sy, p.sw, p.sh,
+        p.placedCol * game.pieceW, p.placedRow * game.pieceH, p.sw, p.sh);
+    });
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function renderTray() {
+    if (!game) return;
+    const tray = $('tray');
+    tray.innerHTML = '';
+    let list = game.pieces.filter(p => {
+      if (p.placed) return false;
+      if (game.filter === 'all') return true;
+      return p.type === game.filter;
+    });
+
+    // random order every time (like a real box of pieces)
+    list = shuffle(list);
+
+    // limit DOM nodes for performance (especially 500–1000 pieces)
+    const MAX_VISIBLE = 80;
+    const visible = list.slice(0, MAX_VISIBLE);
+    if (list.length > MAX_VISIBLE) {
+      const note = document.createElement('div');
+      note.style.cssText = 'flex-shrink:0;align-self:center;color:var(--muted);font-size:0.75rem;padding:0 8px;white-space:nowrap;';
+      note.textContent = `+${list.length - MAX_VISIBLE}`;
+      tray.appendChild(note);
+    }
+
+    visible.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'piece';
+      el.dataset.id = p.id;
+      const c = document.createElement('canvas');
+      c.width = TRAY_SIZE; c.height = TRAY_SIZE;
+      const ctx = c.getContext('2d');
+      const scale = Math.max(TRAY_SIZE / p.sw, TRAY_SIZE / p.sh);
+      const dw = p.sw * scale, dh = p.sh * scale;
+      ctx.drawImage(game.sourceImg, p.sx, p.sy, p.sw, p.sh,
+        (TRAY_SIZE - dw) / 2, (TRAY_SIZE - dh) / 2, dw, dh);
+      el.appendChild(c);
+      tray.appendChild(el);
+      bindPieceDrag(el, p);
+    });
+  }
+
+  // ---------- Transform ----------
+  function applyTransform() {
+    if (!game) return;
+    const cont = $('boardContainer');
+    cont.style.transform = `translate(${game.panX}px, ${game.panY}px) scale(${game.scale})`;
+  }
+
+  function fitBoard() {
+    if (!game) return;
+    const vp = $('viewport');
+    const vw = vp.clientWidth;
+    const vh = vp.clientHeight;
+    if (vw < 10 || vh < 10) return;
+    const pad = 12;
+    const scale = Math.min((vw - pad * 2) / game.srcW, (vh - pad * 2) / game.srcH);
+    game.scale = Math.max(0.05, scale);
+    game.panX = (vw - game.srcW * game.scale) / 2;
+    game.panY = (vh - game.srcH * game.scale) / 2;
+    applyTransform();
+  }
+
+  function clampPan() {
+    if (!game) return;
+    const vp = $('viewport');
+    const vw = vp.clientWidth, vh = vp.clientHeight;
+    const bw = game.srcW * game.scale;
+    const bh = game.srcH * game.scale;
+    // keep at least 40px of board visible
+    const margin = 40;
+    if (bw + margin * 2 < vw) {
+      game.panX = (vw - bw) / 2;
+    } else {
+      game.panX = Math.min(margin, Math.max(vw - bw - margin, game.panX));
+    }
+    if (bh + margin * 2 < vh) {
+      game.panY = (vh - bh) / 2;
+    } else {
+      game.panY = Math.min(margin, Math.max(vh - bh - margin, game.panY));
+    }
+  }
+
+  // Gestures: 1 finger = pan or drag piece, 2 fingers = pinch zoom ONLY
+  (function gestures() {
+    const vp = $('viewport');
+    const pointers = new Map();
+    let mode = null;          // null | 'pan' | 'drag' | 'pinch'
+    let dragPiece = null;
+    let lastDist = 0;
+    let lastMid = null;
+    const ghost = $('ghost');
+    const gCanvas = ghost.querySelector('canvas');
+
+    function resetGestureState() {
+      mode = null;
+      dragPiece = null;
+      lastDist = 0;
+      lastMid = null;
+      ghost.style.display = 'none';
+      pointers.clear();
+    }
+
+    function screenToBoard(clientX, clientY) {
+      const rect = vp.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - game.panX) / game.scale,
+        y: (clientY - rect.top - game.panY) / game.scale
+      };
+    }
+
+    function findPlacedPieceAt(bx, by) {
+      if (!game || game.view !== 'puzzle') return null;
+      for (let i = game.pieces.length - 1; i >= 0; i--) {
+        const p = game.pieces[i];
+        if (!p.placed) continue;
+        const x0 = p.placedCol * game.pieceW;
+        const y0 = p.placedRow * game.pieceH;
+        if (bx >= x0 && bx < x0 + p.sw && by >= y0 && by < y0 + p.sh) return p;
+      }
+      return null;
+    }
+
+    function showGhost(piece, cx, cy) {
+      let gw = game.pieceW * Math.min(1.6, Math.max(0.4, game.scale));
+      let gh = game.pieceH * Math.min(1.6, Math.max(0.4, game.scale));
+      const maxS = 130;
+      if (Math.max(gw, gh) > maxS) {
+        const s = maxS / Math.max(gw, gh);
+        gw *= s; gh *= s;
+      }
+      gw = Math.round(Math.max(28, gw));
+      gh = Math.round(Math.max(28, gh));
+      gCanvas.width = gw;
+      gCanvas.height = gh;
+      gCanvas.getContext('2d').drawImage(
+        game.sourceImg, piece.sx, piece.sy, piece.sw, piece.sh, 0, 0, gw, gh
+      );
+      ghost.style.width = gw + 'px';
+      ghost.style.height = gh + 'px';
+      ghost.style.left = (cx - gw / 2) + 'px';
+      ghost.style.top = (cy - gh / 2) + 'px';
+      ghost.style.display = 'block';
+    }
+
+    function finishDrag(clientX, clientY) {
+      if (!dragPiece) return;
+      ghost.style.display = 'none';
+      const ok = tryPlace(dragPiece, clientX, clientY);
+      if (!ok) renderTray();
+      saveProgress();
+      if (game && game.isMulti && game.peers && game.peers.send) {
+        if (dragPiece.placed) {
+          game.peers.send({ type: 'place', id: dragPiece.id, col: dragPiece.placedCol, row: dragPiece.placedRow });
+        } else {
+          game.peers.send({ type: 'unplace', id: dragPiece.id });
+        }
+      }
+      dragPiece = null;
+    }
+
+    vp.addEventListener('pointerdown', e => {
+      if (!game || (e.button && e.button !== 0)) return;
+      e.preventDefault();
+
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { vp.setPointerCapture(e.pointerId); } catch (_) {}
+
+      if (pointers.size === 1) {
+        // Single finger: either pick piece or pan
+        const pt = screenToBoard(e.clientX, e.clientY);
+        const hit = findPlacedPieceAt(pt.x, pt.y);
+        if (hit) {
+          mode = 'drag';
+          dragPiece = hit;
+          hit.placed = false;
+          hit.placedCol = -1;
+          hit.placedRow = -1;
+          renderBoard();
+          updateProgress();
+          showGhost(hit, e.clientX, e.clientY);
+        } else {
+          mode = 'pan';
+          dragPiece = null;
+        }
+      } else if (pointers.size === 2) {
+        // Second finger → cancel any drag, switch to pure pinch
+        if (mode === 'drag' && dragPiece) {
+          // put piece back where it was? or leave unplaced
+          // leave unplaced so it goes to tray
+          ghost.style.display = 'none';
+          renderTray();
+          dragPiece = null;
+        }
+        mode = 'pinch';
+        const pts = [...pointers.values()];
+        lastDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        lastMid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      }
+    }, { passive: false });
+
+    vp.addEventListener('pointermove', e => {
+      if (!pointers.has(e.pointerId) || !game) return;
+      e.preventDefault();
+
+      const prev = pointers.get(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (mode === 'pinch' && pointers.size >= 2) {
+        const pts = [...pointers.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const mid = {
+          x: (pts[0].x + pts[1].x) / 2,
+          y: (pts[0].y + pts[1].y) / 2
+        };
+        if (lastDist > 8) {
+          const factor = dist / lastDist;
+          const rect = vp.getBoundingClientRect();
+          const mx = mid.x - rect.left;
+          const my = mid.y - rect.top;
+          const bx = (mx - game.panX) / game.scale;
+          const by = (my - game.panY) / game.scale;
+          const newScale = Math.min(5.5, Math.max(0.1, game.scale * factor));
+          game.scale = newScale;
+          game.panX = mx - bx * newScale;
+          game.panY = my - by * newScale;
+          // also pan a bit with mid movement
+          if (lastMid) {
+            game.panX += (mid.x - lastMid.x);
+            game.panY += (mid.y - lastMid.y);
+          }
+          clampPan();
+          applyTransform();
+        }
+        lastDist = dist;
+        lastMid = mid;
+      } else if (mode === 'drag' && dragPiece && pointers.size === 1) {
+        const gw = parseFloat(ghost.style.width) || 50;
+        const gh = parseFloat(ghost.style.height) || 50;
+        ghost.style.left = (e.clientX - gw / 2) + 'px';
+        ghost.style.top = (e.clientY - gh / 2) + 'px';
+      } else if (mode === 'pan' && pointers.size === 1) {
+        game.panX += e.clientX - prev.x;
+        game.panY += e.clientY - prev.y;
+        clampPan();
+        applyTransform();
+      }
+    }, { passive: false });
+
+    function onUp(e) {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.delete(e.pointerId);
+
+      if (mode === 'drag' && dragPiece) {
+        // only finish if this was the dragging finger and no other fingers left
+        if (pointers.size === 0) {
+          finishDrag(e.clientX, e.clientY);
+          mode = null;
+        }
+      } else if (pointers.size === 0) {
+        mode = null;
+        lastDist = 0;
+        lastMid = null;
+      } else if (pointers.size === 1 && mode === 'pinch') {
+        // one finger left after pinch → switch to pan
+        mode = 'pan';
+        lastDist = 0;
+        lastMid = null;
+      }
+    }
+
+    vp.addEventListener('pointerup', onUp);
+    vp.addEventListener('pointercancel', e => {
+      onUp(e);
+      // safety: if everything is gone, force reset
+      if (pointers.size === 0) resetGestureState();
+    });
+
+    // Prevent browser zoom / scroll
+    vp.addEventListener('gesturestart', e => e.preventDefault());
+    vp.addEventListener('gesturechange', e => e.preventDefault());
+    vp.addEventListener('gestureend', e => e.preventDefault());
+    vp.addEventListener('touchmove', e => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  })();
+
+  // ---------- Drag pieces ----------
+  function bindPieceDrag(el, piece) {
+    let startX = 0, startY = 0, active = false, moved = false;
+    const ghost = $('ghost');
+    const gCanvas = ghost.querySelector('canvas');
+
+    function onStart(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = e.touches ? e.touches[0] : e;
+      startX = t.clientX; startY = t.clientY;
+      active = true; moved = false;
+    }
+
+    function onMove(e) {
+      if (!active) return;
+      e.preventDefault();
+      const t = e.touches ? e.touches[0] : e;
+      const dx = t.clientX - startX, dy = t.clientY - startY;
+      if (!moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        moved = true;
+        el.classList.add('dragging');
+        // ghost size ~ piece at current scale, clamped
+        let gw = game.pieceW * Math.min(1.4, Math.max(0.5, game.scale));
+        let gh = game.pieceH * Math.min(1.4, Math.max(0.5, game.scale));
+        const maxS = 130;
+        if (gw > maxS || gh > maxS) {
+          const s = maxS / Math.max(gw, gh);
+          gw *= s; gh *= s;
+        }
+        gw = Math.round(Math.max(36, gw));
+        gh = Math.round(Math.max(36, gh));
+        gCanvas.width = gw; gCanvas.height = gh;
+        gCanvas.getContext('2d').drawImage(game.sourceImg, piece.sx, piece.sy, piece.sw, piece.sh, 0, 0, gw, gh);
+        ghost.style.width = gw + 'px';
+        ghost.style.height = gh + 'px';
+        ghost.style.display = 'block';
+      }
+      if (moved) {
+        ghost.style.left = (t.clientX - parseFloat(ghost.style.width) / 2) + 'px';
+        ghost.style.top = (t.clientY - parseFloat(ghost.style.height) / 2) + 'px';
+      }
+    }
+
+    function onEnd(e) {
+      if (!active) return;
+      active = false;
+      if (moved) {
+        const t = (e.changedTouches && e.changedTouches[0]) || e;
+        const ok = tryPlace(piece, t.clientX, t.clientY);
+        ghost.style.display = 'none';
+        el.classList.remove('dragging');
+        if (!ok) {
+          // piece stays unplaced, tray already has it
+          renderTray();
+        }
+      }
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+    }
+
+    el.addEventListener('pointerdown', e => {
+      onStart(e);
+      document.addEventListener('pointermove', onMove, { passive: false });
+      document.addEventListener('pointerup', onEnd);
+    });
+    el.addEventListener('touchstart', e => {
+      onStart(e);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    }, { passive: false });
+  }
+
+  function tryPlace(piece, clientX, clientY) {
+    if (!game || game.view !== 'puzzle') return false;
+    const vp = $('viewport');
+    const rect = vp.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+
+    // board coordinates
+    const bx = (mx - game.panX) / game.scale;
+    const by = (my - game.panY) / game.scale;
+
+    // which cell is under the finger
+    let col = Math.floor(bx / game.pieceW);
+    let row = Math.floor(by / game.pieceH);
+    col = Math.max(0, Math.min(game.cols - 1, col));
+    row = Math.max(0, Math.min(game.rows - 1, row));
+
+    // overlap check — piece centered on drop point
+    const cellX = col * game.pieceW, cellY = row * game.pieceH;
+    const pw = game.pieceW, ph = game.pieceH;
+    const pl = bx - pw / 2, pt = by - ph / 2;
+    const ow = Math.max(0, Math.min(pl + pw, cellX + pw) - Math.max(pl, cellX));
+    const oh = Math.max(0, Math.min(pt + ph, cellY + ph) - Math.max(pt, cellY));
+    const ratio = (ow * oh) / (pw * ph);
+
+    if (ratio < SNAP_RATIO) return false;
+
+    const occupied = game.pieces.some(p => p.placed && p.placedCol === col && p.placedRow === row && p.id !== piece.id);
+    if (occupied) return false;
+
+    piece.placed = true;
+    piece.placedCol = col;
+    piece.placedRow = row;
+    renderBoard();
+    renderTray();
+    updateProgress();
+    saveProgress();
+
+    if (game.isMulti && game.peers && game.peers.send) {
+      game.peers.send({ type: 'place', id: piece.id, col, row });
+    }
+    return true;
+  }
+
+  async function saveProgress() {
+    if (!game) return;
+    const placements = game.pieces.filter(p => p.placed).map(p => ({
+      id: p.id, col: p.placedCol, row: p.placedRow
+    }));
+    await idbPut('progress', { key: game.progressKey, placements, updated: Date.now() });
+  }
+
+  // ---------- View tabs ----------
+  function setView(v) {
+    if (!game) return;
+    game.view = v;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+    $('boardCanvas').style.display = v === 'puzzle' ? 'block' : 'none';
+    $('refCanvas').style.display = v === 'ref' ? 'block' : 'none';
+  }
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => setView(btn.dataset.view));
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (game) { game.filter = btn.dataset.filter; renderTray(); }
+    });
+  });
+
+  // Exit / win / reset
+  $('btnExitGame').addEventListener('click', () => $('exitOverlay').classList.add('show'));
+  $('btnCancelExit').addEventListener('click', () => $('exitOverlay').classList.remove('show'));
+  $('btnConfirmExit').addEventListener('click', () => {
+    $('exitOverlay').classList.remove('show');
+    game = null;
+    showScreen('home');
+  });
+  $('btnWinHome').addEventListener('click', () => {
+    $('winOverlay').classList.remove('show');
+    game = null;
+    showScreen('home');
+  });
+  $('btnWinAgain').addEventListener('click', async () => {
+    $('winOverlay').classList.remove('show');
+    if (game) {
+      await idbDelete('progress', game.progressKey);
+      startGame(game.imageId, game.cols, game.rows, game.isMulti);
+    }
+  });
+
+  $('btnResetGame').addEventListener('click', () => {
+    if (!game) return;
+    $('resetOverlay').classList.add('show');
+  });
+  $('btnCancelReset').addEventListener('click', () => $('resetOverlay').classList.remove('show'));
+  $('btnConfirmReset').addEventListener('click', async () => {
+    $('resetOverlay').classList.remove('show');
+    if (!game) return;
+    await idbDelete('progress', game.progressKey);
+    startGame(game.imageId, game.cols, game.rows, game.isMulti);
+  });
+
+  // Full delete image from storage
+  $('btnDeleteImage').addEventListener('click', () => {
+    if (!selectedImageId) return;
+    pendingDeleteId = selectedImageId;
+    $('deleteImageOverlay').classList.add('show');
+  });
+  $('btnCancelDeleteImage').addEventListener('click', () => {
+    $('deleteImageOverlay').classList.remove('show');
+    pendingDeleteId = null;
+  });
+  $('btnConfirmDeleteImage').addEventListener('click', async () => {
+    $('deleteImageOverlay').classList.remove('show');
+    const id = pendingDeleteId;
+    pendingDeleteId = null;
+    if (!id) return;
+    await deleteImageCompletely(id);
+    await refreshImages();
+    showScreen('selectImage');
+  });
+
+  window.addEventListener('resize', () => {
+    if (game && $('game').classList.contains('active')) fitBoard();
+  });
+
+  // ---------- Multiplayer (manual WebRTC) ----------
+  let pc = null, dataChannel = null, isHost = false;
+
+  $('btnMulti').addEventListener('click', () => {
+    showScreen('multiLobby');
+    $('roomInfo').classList.add('hidden');
+    $('joinCodeInput').classList.add('hidden');
+    $('btnSubmitJoin').classList.add('hidden');
+  });
+
+  function createPC() {
+    const peer = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    });
+    peer.onconnectionstatechange = () => {
+      const st = peer.connectionState;
+      if ($('roomStatus')) {
+        if (st === 'connected') $('roomStatus').textContent = 'Подключено! Можно начинать игру.';
+        else if (st === 'failed' || st === 'disconnected') $('roomStatus').textContent = 'Соединение потеряно';
+      }
+    };
+    return peer;
+  }
+  function waitIce(peer) {
+    if (peer.iceGatheringState === 'complete') return Promise.resolve();
+    return new Promise(resolve => {
+      const t = setTimeout(resolve, 3500);
+      peer.addEventListener('icegatheringstatechange', () => {
+        if (peer.iceGatheringState === 'complete') { clearTimeout(t); resolve(); }
+      });
+    });
+  }
+
+  $('btnCreateRoom').addEventListener('click', async () => {
+    isHost = true;
+    pc = createPC();
+    dataChannel = pc.createDataChannel('puzzle', { ordered: true });
+    setupDC(dataChannel);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIce(pc);
+    const code = btoa(JSON.stringify(pc.localDescription));
+    $('roomInfo').classList.remove('hidden');
+    $('roomCodeDisplay').textContent = code.slice(0, 48) + '…';
+    $('roomCodeDisplay').dataset.full = code;
+    $('roomStatus').textContent = 'Отправьте код другу. Затем вставьте его ответ ниже.';
+    $('btnCopyCode').onclick = () => {
+      navigator.clipboard.writeText(code).then(() => {
+        $('btnCopyCode').textContent = 'Скопировано!';
+        setTimeout(() => $('btnCopyCode').textContent = 'Копировать код', 1400);
+      });
+    };
+    if (!$('hostAnswerInput')) {
+      const ta = document.createElement('textarea');
+      ta.id = 'hostAnswerInput'; ta.rows = 3; ta.placeholder = 'Вставь ответный код от гостя';
+      ta.style.marginTop = '12px';
+      const btn = document.createElement('button');
+      btn.className = 'btn small'; btn.textContent = 'Принять ответ';
+      btn.style.cssText = 'margin-top:8px;width:100%;';
+      btn.onclick = async () => {
+        try {
+          await pc.setRemoteDescription(JSON.parse(atob(ta.value.trim())));
+          $('roomStatus').textContent = 'Соединение устанавливается…';
+        } catch { alert('Неверный код'); }
+      };
+      $('roomInfo').appendChild(ta);
+      $('roomInfo').appendChild(btn);
+    }
+  });
+
+  $('btnJoinRoom').addEventListener('click', () => {
+    isHost = false;
+    $('roomInfo').classList.remove('hidden');
+    $('roomStatus').textContent = 'Вставь код комнаты от хоста';
+    $('roomCodeDisplay').classList.add('hidden');
+    $('btnCopyCode').classList.add('hidden');
+    $('joinCodeInput').classList.remove('hidden');
+    $('btnSubmitJoin').classList.remove('hidden');
+  });
+
+  $('btnSubmitJoin').addEventListener('click', async () => {
+    try {
+      const offer = JSON.parse(atob($('joinCodeInput').value.trim()));
+      pc = createPC();
+      pc.ondatachannel = e => { dataChannel = e.channel; setupDC(dataChannel); };
+      await pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitIce(pc);
+      const code = btoa(JSON.stringify(pc.localDescription));
+      $('roomStatus').textContent = 'Отправьте этот код хосту:';
+      $('roomCodeDisplay').classList.remove('hidden');
+      $('roomCodeDisplay').textContent = code.slice(0, 48) + '…';
+      $('roomCodeDisplay').dataset.full = code;
+      $('btnCopyCode').classList.remove('hidden');
+      $('btnCopyCode').onclick = () => {
+        navigator.clipboard.writeText(code).then(() => {
+          $('btnCopyCode').textContent = 'Скопировано!';
+          setTimeout(() => $('btnCopyCode').textContent = 'Копировать код', 1400);
+        });
+      };
+    } catch (e) { alert('Ошибка: ' + e.message); }
+  });
+
+  function setupDC(ch) {
+    ch.onopen = () => {
+      $('roomStatus').textContent = 'Связь установлена! Выберите картинку и начните.';
+      if (!$('multiStartBtn')) {
+        const b = document.createElement('button');
+        b.id = 'multiStartBtn'; b.className = 'btn';
+        b.textContent = 'Выбрать картинку';
+        b.style.cssText = 'width:100%;margin-top:12px;';
+        b.onclick = () => { window.__multiPending = true; refreshImages(); showScreen('selectImage'); };
+        $('roomInfo').appendChild(b);
+      }
+    };
+    ch.onmessage = ev => {
+      try { handleMulti(JSON.parse(ev.data)); } catch (_) {}
+    };
+  }
+
+  function handleMulti(msg) {
+    if (msg.type === 'start' && !game) {
+      startGame(msg.imageId, msg.cols, msg.rows, true).then(() => {
+        if (msg.placements && game) {
+          msg.placements.forEach(p => {
+            const piece = game.pieces.find(x => x.id === p.id);
+            if (piece) { piece.placed = true; piece.placedCol = p.col; piece.placedRow = p.row; }
+          });
+          renderBoard(); renderTray(); updateProgress();
+        }
+        if (game) game.peers = { send: m => dataChannel && dataChannel.readyState === 'open' && dataChannel.send(JSON.stringify(m)) };
+      });
+      return;
+    }
+    if (!game) return;
+    if (msg.type === 'place') {
+      const piece = game.pieces.find(x => x.id === msg.id);
+      if (piece) {
+        // clear previous position if any
+        piece.placed = false;
+        const occ = game.pieces.some(p => p.placed && p.placedCol === msg.col && p.placedRow === msg.row);
+        if (!occ) {
+          piece.placed = true;
+          piece.placedCol = msg.col;
+          piece.placedRow = msg.row;
+        }
+        renderBoard(); renderTray(); updateProgress(); saveProgress();
+      }
+    } else if (msg.type === 'unplace') {
+      const piece = game.pieces.find(x => x.id === msg.id);
+      if (piece && piece.placed) {
+        piece.placed = false;
+        piece.placedCol = -1;
+        piece.placedRow = -1;
+        renderBoard(); renderTray(); updateProgress(); saveProgress();
+      }
+    }
+  }
+
+  // ---------- Init ----------
+  async function init() {
+    setupManifest();
+    registerSW();
+    await openDB();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
